@@ -70,6 +70,25 @@ collection = db["royale_collection"]
 
 
 
+# client é um objeto MongoClient diretamente, não apenas uma variável que "possui" 
+# um objeto.
+
+# Quando você faz client = MongoClient(mongo_uri), você está criando um objeto do 
+# tipo MongoClient.
+
+# A variável db é um objeto do tipo Database porque ela recebe o resultado de 
+# client["DB_clash"]. db é um objeto Database, retornado por client["DB_clash"]. 
+# Ele não é simplesmente um objeto porque o client é um objeto, mas sim porque esse 
+# método (client["DB_clash"]) retorna um novo objeto que representa o banco de dados.
+
+# A variável collection é um objeto do tipo Collection porque ela recebe o resultado 
+# de db["royale_collection"]. collection é um objeto Collection, retornado por 
+# db["royale_collection"]. De novo, ele é um objeto não só porque db é um objeto, mas 
+# porque o acesso a uma coleção (db["colecao"]) retorna um objeto Collection.
+
+
+
+
 # Carregar dataset para MongoDB
 dataset = pd.read_csv('info_cards.csv', sep=',')
 dataset = dataset.dropna()
@@ -136,6 +155,9 @@ print("Dados inseridos com sucesso!")
 
 # Configuração do Flask para a API
 app = Flask(__name__)
+# Cria uma nova aplicação Flask. O argumento __name__ é passado para ajudar o 
+# Flask a localizar arquivos estáticos e templates corretamente. Basicamente, 
+# o Flask usa essa variável para definir o contexto da aplicação.
 
 # Rota para buscar todos os cards
 @app.route('/cards', methods=['GET'])
@@ -143,6 +165,9 @@ def get_all_cards():
     """Retorna todos os cards"""
     cards = list(collection.find({}, {'_id': 0}))  # Excluir '_id' para facilitar
     return jsonify(cards)
+# Esta função será executada sempre que a rota /cards for acessada.
+# Converte o resultado da consulta (um cursor) em uma lista Python.
+# Faz uma busca (consulta) no banco de dados MongoDB.
 
 # Rota para buscar cards por raridade
 @app.route('/cards/<rarity>', methods=['GET'])
@@ -154,7 +179,17 @@ def get_cards_by_rarity(rarity):
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
 
+# Esta linha verifica se o arquivo Python está sendo executado diretamente 
+# (como um script) ou se está sendo importado como um módulo por outro arquivo.
 
+# Em Python, cada arquivo tem um atributo especial chamado __name__. Se o arquivo 
+# está sendo executado diretamente, o valor de __name__ será '__main__'**. Caso 
+# contrário, se o arquivo estiver sendo importado, o valor de **name` será o 
+# nome do módulo (ou seja, o nome do arquivo).
+
+# Portanto, if __name__ == '__main__': verifica se o arquivo está sendo executado 
+# diretamente. Se estiver, o bloco de código dentro dessa verificação será 
+# executado. Caso contrário, o código não será executado.
 
 # import logging
 # from dash import Dash, dcc, html
