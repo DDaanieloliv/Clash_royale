@@ -38,7 +38,37 @@ client = MongoClient(mongo_uri)
 # conexão entre o código Python e o servidor MongoDB.
 
 db = client["DB_clash"]
+# O objeto client é uma conexão com o servidor MongoDB.
+# Quando você usa client["DB_clash"], você está basicamente dizendo ao 
+# MongoDB que quer acessar um banco de dados específico chamado DB_clash.
+# Basicamente, isso prepara o Python para interagir com o banco de dados 
+# DB_clash no lado do MongoDB, mas ainda não executa nenhuma operação.
+
 collection = db["royale_collection"]    
+# Quando você faz db["royale_collection"], você está acessando uma coleção 
+# dentro deste banco de dados. Isso não realiza nenhuma operação de banco de 
+# dados até que você faça algo como inserir, buscar ou modificar documentos 
+# nessa coleção.
+
+
+# Essas linhas acima preparam o acesso ao banco de dados DB_clash e à coleção 
+# royale_collection. Mas até que você faça uma operação de inserção, consulta 
+# ou qualquer outra interação, nada é criado no MongoDB.
+
+# O MongoDB e o PyMongo permitem que você defina um banco de dados e uma coleção 
+# "virtualmente", ou seja, você pode referenciar esses recursos sem que eles 
+# realmente existam fisicamente no servidor MongoDB. Eles só serão criados quando 
+# você realizar uma operação, como uma inserção de dados.
+
+
+# Por que isso acontece?
+# 
+# MongoDB é um banco de dados NoSQL flexível e "schema-less", o que significa que 
+# você não precisa definir explicitamente um esquema (como tabelas e campos) antes 
+# de usar o banco. Os recursos são criados dinamicamente no momento em que uma 
+# operação de escrita é feita.
+
+
 
 # Carregar dataset para MongoDB
 dataset = pd.read_csv('info_cards.csv', sep=',')
@@ -51,6 +81,58 @@ with open('cards.csv', 'r') as file:
     collection.insert_many(data)
 
 print("Dados inseridos com sucesso!")
+
+# open('cards.csv', 'r'): Abre o arquivo cards.csv no modo de leitura ('r'), 
+#   o que permite que o arquivo seja lido mas não modificado.
+#
+# with: O bloco with é usado para garantir que o arquivo seja automaticamente 
+#   fechado após a operação, mesmo que haja algum erro durante a execução. Isso 
+#   é uma boa prática em Python para evitar problemas de vazamento de recursos.
+#
+# as file: Aqui, a variável file contém o objeto do arquivo aberto.
+
+
+# csv.DictReader(file): A função csv.DictReader lê o arquivo CSV e converte cada 
+#   linha em um dicionário Python, onde:
+#
+# As chaves do dicionário são os nomes das colunas do arquivo CSV (a primeira linha 
+# do CSV geralmente contém esses nomes).
+# 
+# Os valores do dicionário são os dados de cada linha subsequente do arquivo.
+#
+# Exemplo: Se o CSV tem o seguinte formato:
+#
+# name,elixir,rarity,type
+# Knight,3,Common,Troop
+# Archers,3,Common,Troop
+#
+# O DictReader irá transformar cada linha em algo assim:
+#
+# {"name": "Knight", "elixir": 3, "rarity": "Common", "type": "Troop"}
+# {"name": "Archers", "elixir": 3, "rarity": "Common", "type": "Troop"}
+#
+# 
+# list(reader): Transforma o objeto DictReader (que é um iterador) em uma lista 
+#   de dicionários. Cada dicionário corresponde a uma linha do CSV, representando um
+#   conjunto de valores para as colunas.
+# 
+# Exemplo de como a variável data ficará após a conversão:
+#
+# [
+#   {"name": "Knight", "elixir": 3, "rarity": "Common", "type": "Troop"},
+#   {"name": "Archers", "elixir": 3, "rarity": "Common", "type": "Troop"}
+# ]
+#
+# 
+# insert_many(data): Este método da coleção MongoDB insere vários documentos 
+#   de uma vez. Aqui, data é uma lista de dicionários (cada dicionário é um 
+#   "documento" no MongoDB), então todos os dicionários da lista serão inseridos na 
+#   coleção royale_collection.
+#
+# Se data contém 100 dicionários (linhas do CSV), o MongoDB irá inserir 100 
+# documentos na coleção royale_collection.
+
+
 
 # Configuração do Flask para a API
 app = Flask(__name__)
