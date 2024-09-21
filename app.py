@@ -1,13 +1,44 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify 
+# O Flask é um microframework web para Python.
+# (ideal para construir APIs simples)
+
+# O jsonify é uma função do Flask usada para converter dados do 
+# Python (como listas e dicionários) para o formato JSON, que é 
+# o formato padrão de resposta em APIs.
+
+# Ao retornar os dados do MongoDB para o cliente (como no seu Dash app), 
+# eles precisam ser serializados em formato JSON. jsonify faz isso 
+# automaticamente.
+
 from pymongo import MongoClient
+# O MongoClient é o cliente MongoDB que você usa para se conectar ao 
+# banco de dados MongoDB a partir de Python.
+
 import pandas as pd
+# O pandas é uma biblioteca poderosa para manipulação e análise de 
+# dados, muito usada em ciência de dados.
+
 import csv
+# A biblioteca csv é uma biblioteca nativa do Python para ler e 
+# escrever arquivos no formato CSV (Comma Separated Values).
+
+# Embora o pandas também tenha suporte para CSV, a biblioteca csv é 
+# útil quando você precisa manipular grandes quantidades de dados de forma 
+# mais eficiente ou personalizada.
+
+
 
 # Conectar ao MongoDB
-mongo_uri = "mongodb://admin:123@localhost:27017/"
+mongo_uri = "mongodb://admin:123@localhost:27017/"  
+
 client = MongoClient(mongo_uri)
+# Criando uma instância de MongoClient e passando a URI de conexão (mongo_uri).
+
+# O MongoClient é o objeto principal da biblioteca pymongo que gerencia a 
+# conexão entre o código Python e o servidor MongoDB.
+
 db = client["DB_clash"]
-collection = db["royale_collection"]
+collection = db["royale_collection"]    
 
 # Carregar dataset para MongoDB
 dataset = pd.read_csv('info_cards.csv', sep=',')
