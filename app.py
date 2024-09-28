@@ -1,6 +1,6 @@
 from flask import Flask, jsonify 
 # O Flask é um microframework web para Python.
-# (ideal para construir APIs simples)
+# (ideal para construir APIs simples).
 
 # O jsonify é uma função do Flask usada para converter dados do 
 # Python (como listas e dicionários) para o formato JSON, que é 
