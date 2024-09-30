@@ -81,6 +81,9 @@ def calcular_porcentagem_vitorias_derrotas():
         'porcentagem_derrotas': porcentagem_derrotas
     })
 
+GET /vitorias_derrotas_carta?carta=Mini%20P.E.K.K.A&inicio=2024-01-01%2000:00:00&fim=2024-12-31%2023:59:59
+
+
 
 # 2. Listar os decks completos que produziram mais de X% de vitórias em um intervalo de timestamps
 @app.route('/decks_vitorias', methods=['GET'])
@@ -118,6 +121,9 @@ def listar_decks_com_vitorias():
 
     return jsonify(decks_com_percentual_vitorias)
 
+GET /decks_vitorias?percentual=60&inicio=2024-01-01%2000:00:00&fim=2024-12-31%2023:59:59
+
+
 
 # 3. Calcular a quantidade de derrotas usando um combo de cartas (X1, X2, ...) em um intervalo de timestamps
 @app.route('/derrotas_combo', methods=['GET'])
@@ -141,6 +147,9 @@ def calcular_derrotas_combo():
         'cartas': cartas,
         'derrotas': derrotas
     })
+
+GET /derrotas_combo?cartas=Mini%20P.E.K.K.A,Golem&inicio=2024-01-01%2000:00:00&fim=2024-12-31%2023:59:59
+
 
 
 # 4. Calcular vitórias com carta X nos casos com regras específicas
@@ -166,6 +175,9 @@ def calcular_vitorias_com_regras():
     }))
 
     return jsonify({'vitorias': len(vitorias)})
+
+GET /vitorias_regras?carta=Mini%20P.E.K.K.A&diferenca_trofeus=200&inicio=2024-01-01%2000:00:00&fim=2024-12-31%2023:59:59
+
 
 
 # 5. Listar o combo de cartas que produziram mais de Y% de vitórias
@@ -204,6 +216,9 @@ def listar_combo_vitorias():
     }
 
     return jsonify(combos_com_percentual_vitorias)
+
+GET /combo_vitorias?tamanho=3&percentual=70&inicio=2024-01-01%2000:00:00&fim=2024-12-31%2023:59:59
+
 
 
 if __name__ == '__main__':
