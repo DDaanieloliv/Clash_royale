@@ -1,250 +1,216 @@
 from flask import Flask, jsonify, request
 from pymongo import MongoClient
 import pandas as pd
-import csv
 from datetime import datetime
 
-# Conectar ao MongoDB
-mongo_uri = "mongodb://admin:123@localhost:27017/"
-client = MongoClient(mongo_uri)
-db = client["DB_clash"]
+# Configurar a conexão com o MongoDB
+client = MongoClient('mongodb://admin:123@localhost:27017/')
+db = client['clash_royale']
+jogadores_collection = db['jogadores']
+batalhas_collection = db['batalhas']
 
-# Coleções do MongoDB
-batalhas_collection = db["batalhas"]
-jogadores_collection = db["jogadores"]
+# Função para converter a string de deck para lista
+def converter_deck(deck_str):
+    # Remove as aspas e transforma a string em lista
+    return [carta.strip() for carta in deck_str.split(',')]
 
-# Função para carregar um CSV e inserir no MongoDB
-def carregar_dataset_batalhas(csv_file):
-    # Carregar o CSV usando pandas
-    df = pd.read_csv(csv_file)
+# Função para converter a data de string para objeto datetime
+def converter_data(data_str):
+    return datetime.strptime(data_str, '%Y-%m-%d %H:%M:%S.%f')
+
+# Função para importar CSV de jogadores e salvar no MongoDB
+def importar_jogadores(csv_path):
+    # Leitura do CSV usando pandas
+    df_jogadores = pd.read_csv(csv_path)
     
-    # Converter as colunas necessárias para os tipos corretos
-    df['tempo_de_batalha'] = df['tempo_de_batalha'].astype(float)
-    df['torres_derrubadas_jogador1'] = df['torres_derrubadas_jogador1'].astype(int)
-    df['torres_derrubadas_jogador2'] = df['torres_derrubadas_jogador2'].astype(int)
-    df['trofeus_jogador1'] = df['trofeus_jogador1'].astype(int)
-    df['trofeus_jogador2'] = df['trofeus_jogador2'].astype(int)
+    # Para cada jogador no DataFrame
+    for _, row in df_jogadores.iterrows():
+        jogador = {
+            "nickname": row['nickname'],
+            "tempo_de_jogo": row['tempo_de_jogo'],
+            "trofeus": row['trofeus'],
+            "nivel": row['nivel'],
+            "deck": converter_deck(row['deck'])  # Convertendo deck para lista
+        }
+        # Inserir ou atualizar o jogador no MongoDB
+        jogadores_collection.update_one(
+            {"nickname": jogador["nickname"]}, 
+            {"$set": jogador}, 
+            upsert=True
+        )
 
-    # Inserir os dados no MongoDB
-    batalhas_collection.insert_many(df.to_dict('records'))
-
-def carregar_dataset_jogadores(csv_file):
-    # Carregar o CSV usando pandas
-    df = pd.read_csv(csv_file)
+# Função para importar CSV de batalhas e salvar no MongoDB
+def importar_batalhas(csv_path):
+    # Leitura do CSV usando pandas
+    df_batalhas = pd.read_csv(csv_path)
     
-    # Converter as colunas necessárias para os tipos corretos
-    df['tempo_de_jogo'] = df['tempo_de_jogo'].astype(float)
-    df['trofeus'] = df['trofeus'].astype(int)
-    df['nivel'] = df['nivel'].astype(int)
+    # Para cada batalha no DataFrame
+    for _, row in df_batalhas.iterrows():
+        batalha = {
+            "id_batalha": row['id_batalha'],
+            "data": converter_data(row['data']),  # Convertendo string para datetime
+            "tempo_de_batalha": row['tempo_de_batalha'],
+            "torres_derrubadas_jogador1": row['torres_derrubadas_jogador1'],
+            "torres_derrubadas_jogador2": row['torres_derrubadas_jogador2'],
+            "vencedor": row['vencedor'],
+            "deck_jogador1": converter_deck(row['deck_jogador1']),  # Convertendo deck para lista
+            "deck_jogador2": converter_deck(row['deck_jogador2']),  # Convertendo deck para lista
+            "trofeus_jogador1": row['trofeus_jogador1'],
+            "trofeus_jogador2": row['trofeus_jogador2']
+        }
+        # Inserir ou atualizar a batalha no MongoDB
+        batalhas_collection.update_one(
+            {"id_batalha": batalha["id_batalha"]}, 
+            {"$set": batalha}, 
+            upsert=True
+        )
 
-    # Inserir os dados no MongoDB
-    jogadores_collection.insert_many(df.to_dict('records'))
+# Exemplo de como usar as funções
+if __name__ == '__main__':
+    # Substitua pelos caminhos reais dos arquivos CSV
+    jogadores_csv_path = 'jogadores.csv'
+    batalhas_csv_path = 'batalhas.csv'
+    
+    # Importa os dados dos CSVs para o MongoDB
+    importar_jogadores(jogadores_csv_path)
+    importar_batalhas(batalhas_csv_path)
 
-# Carregar os datasets de batalhas e jogadores
-carregar_dataset_batalhas('C:/Users/nielo/Documents/Clash_royale/mt_molecagem/batalhas_clash_royale.csv')  # Certifique-se de que o arquivo 'batalhas.csv' esteja no caminho correto
-carregar_dataset_jogadores('C:/Users/nielo/Documents/Clash_royale/mt_molecagem/jogadores_clash_royale.csv')  # Certifique-se de que o arquivo 'jogadores.csv' esteja no caminho correto
+    print("Importação concluída!")
 
-
-# Configuração do Flask para expor APIs
 app = Flask(__name__)
 
-# 1. Calcular a porcentagem de vitórias e derrotas utilizando a carta X em um intervalo de timestamps
-@app.route('/vitorias_derrotas_carta', methods=['GET'])
-def calcular_porcentagem_vitorias_derrotas():
-    """Calcula a porcentagem de vitórias e derrotas utilizando a carta X em um intervalo de timestamps"""
+# Função para converter a string de data para objeto datetime
+def converter_data_api(data_str):
+    return datetime.strptime(data_str, '%Y-%m-%d %H:%M:%S')
+
+# API para calcular a porcentagem de vitórias e derrotas utilizando a carta X em um intervalo de timestamps
+@app.route('/porcentagem_vitorias_derrotas', methods=['GET'])
+def porcentagem_vitorias_derrotas():
     carta = request.args.get('carta')
     inicio = request.args.get('inicio')
     fim = request.args.get('fim')
 
-    # Converter os timestamps para o formato datetime
-    inicio_dt = datetime.strptime(inicio, '%Y-%m-%d %H:%M:%S')
-    fim_dt = datetime.strptime(fim, '%Y-%m-%d %H:%M:%S')
+    # Converte as datas
+    data_inicio = converter_data_api(inicio)
+    data_fim = converter_data_api(fim)
 
-    # Buscar todas as batalhas no intervalo de timestamps
-    batalhas = list(batalhas_collection.find({
-        'timestamp': {'$gte': inicio_dt, '$lte': fim_dt},
-        '$or': [{'cartas_vencedor': carta}, {'cartas_perdedor': carta}]
-    }))
-
-    vitorias = sum(1 for b in batalhas if carta in b['cartas_vencedor'])
-    derrotas = sum(1 for b in batalhas if carta in b['cartas_perdedor'])
-
-    total_batalhas = vitorias + derrotas
-    porcentagem_vitorias = (vitorias / total_batalhas) * 100 if total_batalhas > 0 else 0
-    porcentagem_derrotas = (derrotas / total_batalhas) * 100 if total_batalhas > 0 else 0
-
-    return jsonify({
-        'carta': carta,
-        'vitorias': vitorias,
-        'derrotas': derrotas,
-        'porcentagem_vitorias': porcentagem_vitorias,
-        'porcentagem_derrotas': porcentagem_derrotas
+    # Filtra as batalhas no intervalo de tempo
+    batalhas = batalhas_collection.find({
+        "data": {"$gte": data_inicio, "$lte": data_fim},
+        "$or": [
+            {"deck_jogador1": carta},
+            {"deck_jogador2": carta}
+        ]
     })
 
-# GET /vitorias_derrotas_carta?carta=Mini%20P.E.K.K.A&inicio=2024-01-01%2000:00:00&fim=2024-12-31%2023:59:59
+    total_batalhas = 0
+    vitorias = 0
+    derrotas = 0
 
-# resposta esperada:
+    for batalha in batalhas:
+        total_batalhas += 1
+        if carta in batalha['deck_jogador1'] and batalha['vencedor'] == batalha['deck_jogador1']:
+            vitorias += 1
+        elif carta in batalha['deck_jogador2'] and batalha['vencedor'] == batalha['deck_jogador2']:
+            vitorias += 1
+        else:
+            derrotas += 1
 
-# {
-#    "carta": "Mini P.E.K.K.A",
-#    "vitorias": 15,
-#    "derrotas": 5,
-#    "porcentagem_vitorias": 75.0,
-#    "porcentagem_derrotas": 25.0
-# }
+    if total_batalhas > 0:
+        porcentagem_vitorias = (vitorias / total_batalhas) * 100
+        porcentagem_derrotas = (derrotas / total_batalhas) * 100
+    else:
+        porcentagem_vitorias = 0
+        porcentagem_derrotas = 0
 
-# 2. Listar os decks completos que produziram mais de X% de vitórias em um intervalo de timestamps
-@app.route('/decks_vitorias', methods=['GET'])
-def listar_decks_com_vitorias():
-    """Lista decks que produziram mais de X% de vitórias em um intervalo de timestamps"""
-    percentual_vitorias = float(request.args.get('percentual'))
+    return jsonify({
+        "carta": carta,
+        "total_batalhas": total_batalhas,
+        "vitorias": vitorias,
+        "derrotas": derrotas,
+        "porcentagem_vitorias": porcentagem_vitorias,
+        "porcentagem_derrotas": porcentagem_derrotas
+    })
+
+# API para listar os decks completos que produziram mais de X% de vitórias em um intervalo de timestamps
+@app.route('/decks_vitoriosos', methods=['GET'])
+def decks_vitoriosos():
+    porcentagem_minima = float(request.args.get('porcentagem'))
     inicio = request.args.get('inicio')
     fim = request.args.get('fim')
 
-    # Converter os timestamps para o formato datetime
-    inicio_dt = datetime.strptime(inicio, '%Y-%m-%d %H:%M:%S')
-    fim_dt = datetime.strptime(fim, '%Y-%m-%d %H:%M:%S')
+    # Converte as datas
+    data_inicio = converter_data_api(inicio)
+    data_fim = converter_data_api(fim)
 
-    # Buscar todas as batalhas no intervalo de timestamps
-    batalhas = list(batalhas_collection.find({'timestamp': {'$gte': inicio_dt, '$lte': fim_dt}}))
+    # Filtra as batalhas no intervalo de tempo
+    batalhas = batalhas_collection.find({
+        "data": {"$gte": data_inicio, "$lte": data_fim}
+    })
 
     deck_vitorias = {}
 
-    for b in batalhas:
-        deck = tuple(b['cartas_vencedor'])  # Considerar o deck vencedor
-        deck_vitorias[deck] = deck_vitorias.get(deck, {'vitorias': 0, 'total': 0})
+    for batalha in batalhas:
+        vencedor = batalha['vencedor']
+        if vencedor == batalha['deck_jogador1']:
+            deck = tuple(batalha['deck_jogador1'])
+        else:
+            deck = tuple(batalha['deck_jogador2'])
+
+        if deck not in deck_vitorias:
+            deck_vitorias[deck] = {"vitorias": 0, "total": 0}
+
         deck_vitorias[deck]['vitorias'] += 1
         deck_vitorias[deck]['total'] += 1
 
-        deck_perdedor = tuple(b['cartas_perdedor'])  # Considerar o deck perdedor
-        if deck_perdedor not in deck_vitorias:
-            deck_vitorias[deck_perdedor] = {'vitorias': 0, 'total': 1}
-        else:
-            deck_vitorias[deck_perdedor]['total'] += 1
+    # Filtra os decks que têm mais de X% de vitórias
+    decks_com_vitorias = []
+    for deck, stats in deck_vitorias.items():
+        if stats['total'] > 0:
+            porcentagem_vitorias = (stats['vitorias'] / stats['total']) * 100
+            if porcentagem_vitorias >= porcentagem_minima:
+                decks_com_vitorias.append({
+                    "deck": list(deck),
+                    "vitorias": stats['vitorias'],
+                    "total_batalhas": stats['total'],
+                    "porcentagem_vitorias": porcentagem_vitorias
+                })
 
-    decks_com_percentual_vitorias = {
-        deck: data for deck, data in deck_vitorias.items()
-        if (data['vitorias'] / data['total']) * 100 >= percentual_vitorias
-    }
+    return jsonify(decks_com_vitorias)
 
-    return jsonify(decks_com_percentual_vitorias)
-
-# GET /decks_vitorias?percentual=60&inicio=2024-01-01%2000:00:00&fim=2024-12-31%2023:59:59
-
-# resposta esperada:
-
-# {
-#    "Deck 1": {"vitorias": 10, "total": 15},
-#    "Deck 2": {"vitorias": 8, "total": 12}
-# }
-
-
-# 3. Calcular a quantidade de derrotas usando um combo de cartas (X1, X2, ...) em um intervalo de timestamps
-@app.route('/derrotas_combo', methods=['GET'])
-def calcular_derrotas_combo():
-    """Calcula a quantidade de derrotas utilizando um combo de cartas (X1, X2, ...) em um intervalo de timestamps"""
-    cartas = request.args.getlist('cartas')  # Espera receber várias cartas como parâmetros
+# API para calcular a quantidade de derrotas utilizando o combo de cartas (X1, X2, ...) em um intervalo de timestamps
+@app.route('/derrotas_combo_cartas', methods=['GET'])
+def derrotas_combo_cartas():
+    cartas = request.args.getlist('cartas')
     inicio = request.args.get('inicio')
     fim = request.args.get('fim')
 
-    # Converter os timestamps para o formato datetime
-    inicio_dt = datetime.strptime(inicio, '%Y-%m-%d %H:%M:%S')
-    fim_dt = datetime.strptime(fim, '%Y-%m-%d %H:%M:%S')
+    # Converte as datas
+    data_inicio = converter_data_api(inicio)
+    data_fim = converter_data_api(fim)
 
-    # Buscar batalhas onde o perdedor usou o combo de cartas especificado
-    derrotas = batalhas_collection.count_documents({
-        'timestamp': {'$gte': inicio_dt, '$lte': fim_dt},
-        'cartas_perdedor': {'$all': cartas}
+    # Filtra as batalhas no intervalo de tempo
+    batalhas = batalhas_collection.find({
+        "data": {"$gte": data_inicio, "$lte": data_fim},
+        "$or": [
+            {"deck_jogador1": {"$all": cartas}},
+            {"deck_jogador2": {"$all": cartas}}
+        ]
     })
+
+    derrotas = 0
+
+    for batalha in batalhas:
+        if all(carta in batalha['deck_jogador1'] for carta in cartas) and batalha['vencedor'] != batalha['deck_jogador1']:
+            derrotas += 1
+        elif all(carta in batalha['deck_jogador2'] for carta in cartas) and batalha['vencedor'] != batalha['deck_jogador2']:
+            derrotas += 1
 
     return jsonify({
-        'cartas': cartas,
-        'derrotas': derrotas
+        "combo_cartas": cartas,
+        "derrotas": derrotas
     })
 
-# GET /derrotas_combo?cartas=Mini%20P.E.K.K.A,Golem&inicio=2024-01-01%2000:00:00&fim=2024-12-31%2023:59:59
-
-# {
-#    "cartas": ["Mini P.E.K.K.A", "Golem"],
-#    "derrotas": 3
-# }
-
-
-# 4. Calcular vitórias com carta X nos casos com regras específicas
-@app.route('/vitorias_regras', methods=['GET'])
-def calcular_vitorias_com_regras():
-    """Calcula vitórias envolvendo a carta X, considerando regras adicionais"""
-    carta = request.args.get('carta')
-    diferenca_trofeus = float(request.args.get('diferenca_trofeus'))
-    inicio = request.args.get('inicio')
-    fim = request.args.get('fim')
-
-    # Converter os timestamps para o formato datetime
-    inicio_dt = datetime.strptime(inicio, '%Y-%m-%d %H:%M:%S')
-    fim_dt = datetime.strptime(fim, '%Y-%m-%d %H:%M:%S')
-
-    # Buscar batalhas onde a carta foi usada e obedecem às regras
-    vitorias = list(batalhas_collection.find({
-        'timestamp': {'$gte': inicio_dt, '$lte': fim_dt},
-        'cartas_vencedor': carta,
-        'trofeus_vencedor': {'$lte': {'$subtract': ['$trofeus_perdedor', diferenca_trofeus]}},
-        'duracao': {'$lt': 120},  # Duração menor que 2 minutos
-        'torres_perdedor': {'$gte': 2}  # O perdedor derrubou ao menos duas torres
-    }))
-
-    return jsonify({'vitorias': len(vitorias)})
-
-# GET /vitorias_regras?carta=Mini%20P.E.K.K.A&diferenca_trofeus=200&inicio=2024-01-01%2000:00:00&fim=2024-12-31%2023:59:59
-
-# {
-#    "vitorias": 7
-# }
-
-
-# 5. Listar o combo de cartas que produziram mais de Y% de vitórias
-@app.route('/combo_vitorias', methods=['GET'])
-def listar_combo_vitorias():
-    """Lista o combo de cartas de tamanho N que produziu mais de Y% de vitórias"""
-    tamanho_combo = int(request.args.get('tamanho'))
-    percentual_vitorias = float(request.args.get('percentual'))
-    inicio = request.args.get('inicio')
-    fim = request.args.get('fim')
-
-    # Converter os timestamps para o formato datetime
-    inicio_dt = datetime.strptime(inicio, '%Y-%m-%d %H:%M:%S')
-    fim_dt = datetime.strptime(fim, '%Y-%m-%d %H:%M:%S')
-
-    # Buscar batalhas no intervalo de timestamps
-    batalhas = list(batalhas_collection.find({'timestamp': {'$gte': inicio_dt, '$lte': fim_dt}}))
-
-    combo_vitorias = {}
-
-    for b in batalhas:
-        combo = tuple(sorted(b['cartas_vencedor'][:tamanho_combo]))
-        combo_vitorias[combo] = combo_vitorias.get(combo, {'vitorias': 0, 'total': 0})
-        combo_vitorias[combo]['vitorias'] += 1
-        combo_vitorias[combo]['total'] += 1
-
-        combo_perdedor = tuple(sorted(b['cartas_perdedor'][:tamanho_combo]))
-        if combo_perdedor not in combo_vitorias:
-            combo_vitorias[combo_perdedor] = {'vitorias': 0, 'total': 1}
-        else:
-            combo_vitorias[combo_perdedor]['total'] += 1
-
-    combos_com_percentual_vitorias = {
-        combo: data for combo, data in combo_vitorias.items()
-        if (data['vitorias'] / data['total']) * 100 >= percentual_vitorias
-    }
-
-    return jsonify(combos_com_percentual_vitorias)
-
-# GET /combo_vitorias?tamanho=3&percentual=70&inicio=2024-01-01%2000:00:00&fim=2024-12-31%2023:59:59
-
-# {
-#    "Combo 1": {"vitorias": 5, "total": 6},
-#    "Combo 2": {"vitorias": 8, "total": 10}
-# }
-
-
+# Roda a aplicação Flask
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True)
