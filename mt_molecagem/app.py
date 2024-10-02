@@ -3,8 +3,10 @@ from pymongo import MongoClient
 import pandas as pd
 from datetime import datetime
 
+# mongodb://admin:123@localhost:27017/
+
 # Configurar a conexão com o MongoDB
-client = MongoClient('mongodb://admin:123@localhost:27017/')
+client = MongoClient('mongodb+srv://admin:1234@cluster0.5ehmc.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0')
 db = client['clash_royale']
 jogadores_collection = db['jogadores']
 batalhas_collection = db['batalhas']
