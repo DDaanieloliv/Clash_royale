@@ -67,9 +67,9 @@ def importar_batalhas(csv_path):
             upsert=True
         )
 
-# Exemplo de como usar as funções
+
 if __name__ == '__main__':
-    # Substitua pelos caminhos reais dos arquivos CSV
+    
     jogadores_csv_path = 'jogadores.csv'
     batalhas_csv_path = 'batalhas.csv'
     
